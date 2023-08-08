@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import z from "zod";
-import { loginSchema } from "@/zod/loginSchema";
-import axios, { AxiosError } from "axios";
+import { useToast } from "@/components/ui/use-toast";
+import { useRef, useState } from "react";
+import { AxiosError } from "axios";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,39 +16,47 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { toast } from "@/components/ui/use-toast";
-import login from "@/services/login/login";
+import { userSchema } from "@/zod/userSchema";
+import { z } from "zod";
+import signup from "@/services/signup/signup";
 
 interface IError {
   email: string;
   password: string;
+  username: string;
 }
 
-export default function Login() {
+export default function Signup() {
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const usernameRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
 
   const [error, setError] = useState<IError>({
     email: "",
     password: "",
+    username: "",
   });
 
-  const { push } = useRouter();
+  const { toast } = useToast();
 
   const isValidFormat = (): boolean => {
     try {
-      loginSchema.parse({ email, password });
+      userSchema.parse({ email, password, username });
     } catch (error) {
       if (error instanceof z.ZodError) {
         let errorList = {
           email: "",
           password: "",
+          username: "",
         };
         if (error.message.includes("email"))
           errorList.email = "Merci de saisir un email valide";
+        if (error.message.includes("username"))
+          errorList.username = "Doit comprendre entre 3 et 64 caractères";
         if (error.message.includes("password"))
           errorList.password = "Doit comprendre entre 3 et 64 caractères";
         setError(errorList);
@@ -59,22 +66,23 @@ export default function Login() {
     setError({
       email: "",
       password: "",
+      username: "",
     });
     return true;
   };
 
-  const onLogin = async () => {
+  const onRegister = async () => {
     const checkFormat = isValidFormat();
     if (!checkFormat) {
       return;
     }
     try {
-      const response = await login(email, password);
-      console.log("Login successfully", response);
+      const response = await signup(email, password, username);
+      console.log("Register successfully", response);
       toast({
         variant: "success",
-        duration: 1500,
-        title: "🚀 Login réussi !",
+        duration: 5000,
+        title: "🚀 Inscription réussi, bienvenue !",
         description: "Vous allez être redirigé vers votre profil",
       });
     } catch (error) {
@@ -86,19 +94,15 @@ export default function Login() {
           description: error.response?.data.error,
         });
       }
-      return;
     }
-    setTimeout(() => {
-      push("/profile");
-    }, 1250);
   };
 
   return (
     <Card className="w-[350px]">
       <CardHeader>
-        <CardTitle>Se connecter</CardTitle>
+        <CardTitle>S'inscrire</CardTitle>
         <CardDescription>
-          Connectez-vous et créez votre cv en ligne en quelques minutes
+          Inscrivez-vous et créez votre cv en ligne en quelques minutes
           gratuitement.
         </CardDescription>
       </CardHeader>
@@ -122,6 +126,21 @@ export default function Login() {
             </div>
             <div className="flex flex-col space-y-1.5">
               <p className="text-sm font-semibold text-red-500">
+                {error.username}
+              </p>
+              <Label htmlFor="username">Nom d'utilisateur</Label>
+              <Input
+                id="username"
+                placeholder="Nom d'utilisateur"
+                ref={usernameRef}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                }}
+                className={error.username ? "border-red-500" : ""}
+              />
+            </div>
+            <div className="flex flex-col space-y-1.5">
+              <p className="text-sm font-semibold text-red-500">
                 {error.password}
               </p>
               <Label htmlFor="password">Mot de passe</Label>
@@ -140,10 +159,10 @@ export default function Login() {
         </form>
       </CardContent>
       <CardFooter className="flex flex-col justify-between gap-5">
-        <Link href={"/signup"} className="text-sm">
-          Pas encore de compte ?{" "}
+        <Link href={"/login"} className="text-sm">
+          J'ai déjà un compte !{" "}
         </Link>
-        <Button onClick={onLogin}>Se connecter</Button>
+        <Button onClick={onRegister}>Je m'inscris</Button>
       </CardFooter>
     </Card>
   );
